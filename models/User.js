@@ -36,6 +36,10 @@ const UserSchema = new Schema({
         type: Boolean,
         default: false
     },
+    wholesellerStatus: {
+        type: Boolean,
+        default: false
+    },
     dropShipperStatus: {
         type: Boolean,
         default: false

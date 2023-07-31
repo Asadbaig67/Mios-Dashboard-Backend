@@ -65,7 +65,7 @@ router.get("/logout", async (req, res) => {
     success: true,
     message: "Logged out successfully",
   });
-  
+
 });
 
 
@@ -277,7 +277,7 @@ router.get('/allusers', fetchuser, userRoleCheck, async (req, res, next) => {
 
 router.get("/allwholesellers", fetchuser, userRoleCheck, async (req, res) => {
   try {
-    const user = await User.find({ role: "wholeseller", isAdmin: "false" }).select("-password");
+    const user = await User.find({ role: "wholeseller", isAdmin: false, wholesellerStatus: true }).select("-password");
     if (!user) {
       return res.status(400).json({ errors: [{ msg: "No Wholeseller Found." }] });
     }
@@ -298,6 +298,7 @@ router.get("/alldropshippers", fetchuser, userRoleCheck, async (req, res) => {
     if (!user) {
       return res.status(400).json({ errors: [{ msg: "No DropShipper Found." }] });
     }
+
     res.json(user);
   } catch (err) {
     console.error(err.message);
@@ -310,13 +311,24 @@ router.get("/alldropshippers", fetchuser, userRoleCheck, async (req, res) => {
 
 router.get("/allrequests", fetchuser, userRoleCheck, async (req, res) => {
   try {
-    const user = await User.find({ role: "dropshipper", dropShipperStatus: false, isAdmin: false }).select("-password");
+    // const user = await User.find({ role: { $in: ["dropshipper", "wholeseller"] }, dropShipperStatus: false, wholesellerStatus: false, isAdmin: false }).select("-password");
+    // const user = await User.find({ $or: [{ role: "dropshipper", dropShipperStatus: false, isAdmin: false }, { role: "wholeseller", wholesellerStatus  : false, isAdmin: false }] }).select("-password");
+    const user = await User.find({
+      $or: [
+        { role: "dropshipper", dropShipperStatus: false, isAdmin: false },
+        { role: "wholeseller", wholesellerStatus: false, isAdmin: false }
+      ]
+    }).select("-password");
+    // const newUser = await User.find({ role: "wholeseller", wholesellerStatus: false, isAdmin: false }).select("-password");
+    const all = await User.find({ isAdmin: false }).select("-password");
+    let allfalseUsers = [];
+    allfalseUsers = all.filter((item) => (item.role === "wholeseller" && item.wholesellerStatus === false) || (item.role === "dropshipper" && item.dropShipperStatus === false)); // false wholeseller
     if (!user) {
       return res.status(400).json({ errors: [{ msg: "No DropShipper Request Found." }] });
     }
-    res.json(user);
+    res.json(allfalseUsers);
   } catch (err) {
-    console.error(err.message);
+    console.error(err.message)
     res.status(500).send(err.message);
   }
 });
@@ -328,13 +340,26 @@ router.get("/allrequests", fetchuser, userRoleCheck, async (req, res) => {
 router.put("/approve/:id", fetchuser, userRoleCheck, async (req, res) => {
   try {
     const _id = req.params.id;
-    const ApprovedUser = await User.findByIdAndUpdate({ _id }, { dropShipperStatus: false }).select("-password");
-    if (!ApprovedUser) {
+    // const ApprovedUser = await User.findByIdAndUpdate({ _id }, { dropShipperStatus: false }).select("-password");
+    // if (!ApprovedUser) {
+    //   return res.status(400).json({ errors: [{ msg: "User does not exist" }] });
+    // }
+    // ApprovedUser.dropShipperStatus = true;
+    // await ApprovedUser.save();
+    // res.json({ msg: "User approved" });
+    const unApprovedUser = await User.findById(_id);
+    if (!unApprovedUser) {
       return res.status(400).json({ errors: [{ msg: "User does not exist" }] });
     }
-    ApprovedUser.dropShipperStatus = true;
-    await ApprovedUser.save();
+    if (unApprovedUser.role === "dropshipper") {
+      unApprovedUser.dropShipperStatus = true;
+    } else if (unApprovedUser.role === "wholeseller") {
+      unApprovedUser.wholesellerStatus = true;
+    }
+    await unApprovedUser.save();
     res.json({ msg: "User approved" });
+
+
   } catch (err) {
     console.error(err.message);
     res.status(500).send(err.message);
@@ -488,8 +513,8 @@ router.put(
     try {
       const id = req.params.id;
 
-      const { name, address, phone, company, role, dropShipperStatus, city } = req.body;
-      await User.findByIdAndUpdate({ _id: id }, { role, name, address, phone, company, dropShipperStatus, city });
+      const { name, address, phone, company, role, dropShipperStatus, wholesellerStatus, city } = req.body;
+      await User.findByIdAndUpdate({ _id: id }, { role, name, address, phone, company, dropShipperStatus, wholesellerStatus, city });
       res.json({ msg: 'Dropshipper request created.' });
     } catch (err) {
       console.error(err.message);
