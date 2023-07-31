@@ -44,8 +44,6 @@ router.post('/addproduct', fetchuser, userRoleCheck, upload.single('file'), asyn
   }
 })
 
-
-
 // get Featured Products 
 router.get('/featured', fetchuser, async (req, res) => {
   try {
@@ -127,6 +125,16 @@ router.get('/userproducts', fetchuser, userRoleCheck, async (req, res) => {
 // Fetch all Products from the database  : GET "/api//products"
 router.get('/allproducts', async (req, res) => {
   try {
+    const products = await Product.find({ deActivated: false }).populate({ path: 'category', select: ['name'] });
+    res.json({ products })
+  } catch (error) {
+    res.status(500).send(error.message)
+  }
+})
+
+// New Api Made
+router.get('/allactiveproducts', async (req, res) => {
+  try {
     const products = await Product.find().populate({ path: 'category', select: ['name'] });
     res.json({ products })
   } catch (error) {
@@ -134,6 +142,21 @@ router.get('/allproducts', async (req, res) => {
   }
 })
 
+// New Edit Api
+router.put('/changeActivation/:id', async (req, res) => {
+  try {
+    const product = await Product.findById({ _id: req.params.id });
+    if (product.deActivated === false) {
+      product.deActivated = true;
+    } else {
+      product.deActivated = false;
+    }
+    await product.save();
+    res.json(product)
+  } catch (error) {
+    res.status(500).send(error.message)
+  }
+})
 
 // Edit Product using : PUT "/api/products/editproduct/:id", Requires a auth token
 router.put('/editproduct/:id', fetchuser, async (req, res) => {
